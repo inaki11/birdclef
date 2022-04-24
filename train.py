@@ -1,5 +1,9 @@
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 
+### CONFIGURACION A ENTRENAR:
+configuracion = "cfg_ps_6_v2"
+
+
 import numpy as np
 import pandas as pd
 import importlib
@@ -26,6 +30,7 @@ sys.path.append("models")  # Fuente: https://www.geeksforgeeks.org/sys-path-in-p
 sys.path.append("data")
 # sys.path.append("losses")    -    No usado
 # sys.path.append("utils")    -    No usado
+os.environ["PATH"] += os.pathsep + r"C:\Users\pepe\anaconda3\envs\Pajaros\Library\bin"
 
 
 def worker_init_fn(worker_id):
@@ -124,44 +129,17 @@ def create_checkpoint(model, optimizer, epoch, scheduler=None, scaler=None):
     return checkpoint
 
 
+# Copiamos el obj de configuracion puesto a mano
+cfg = copy(importlib.import_module(configuracion).cfg)
 
-# Fuentes:    argparse  -  https://docs.python.org/3/library/argparse.html       https://www.youtube.com/watch?v=tirLko5urBo
-#             sys.argv  -  https://www.pythonforbeginners.com/system/python-sys-argv
 
-# parser es un objeto que permite agrupar parametros que se pasan a una funcion, y que permite redefinirlos desde el intérprete de comandos
-#    --config  parámetro de configuracion(fichero)    --seed   semilla(int)    ¿-C y -s?
-parser = argparse.ArgumentParser(description="")
-parser.add_argument("-C", "--config", help="config filename")
-parser.add_argument("-s", "--seed", type=int, default=-1, help="seed")
-parser_args, _ = parser.parse_known_args(sys.argv)  # sys.argv -> lista con (nombre_Script_Ejecutado, parametro1, param2 ...)
-
-# Fuentes:   copy - https://docs.python.org/es/3/library/copy.html    importlib - https://www.youtube.com/watch?v=cbot48lckOs
-# copy -> copia un objeto, la asignación normal hace link
-# importlib -> Permite importar un módulo de python de forma dinamica. Es decir, asignas a una variable el nombre del módulo y lo puedes
-#                                                                                                            cambiar sin tocar el codigo.
-#     En este caso se importa el módulo de Configuración con el nombre definido en el string de parser_arg.config. (entiendo -C es nombre de config)
-#     cfg es un objeto de  -> "from default_config import basic_cfg"
-#      (Contiene toda la info de conf: Modelo, Backbone, lr, epoch, dataset, train, val, batch_sixe, augmentation, mix_up, cfg mel spectrograms...)
-cfg = copy(importlib.import_module(parser_args.config).cfg)
-
-# Sustutuye la semilla de la config con la dada por consola, si se ha pasado alguna
-if parser_args.seed > -1:
-    cfg.seed = parser_args.seed
-
-os.makedirs(str(cfg.output_dir + "/"),
-            exist_ok=True)  # Crea el directorio si no existe, de lo contrario lo deja igual.
+os.makedirs(str(cfg.output_dir + "/"), exist_ok=True)  # Crea el directorio si no existe, de lo contrario lo deja igual.
 # Fuente: https://www.geeksforgeeks.org/python-os-makedirs-method/
 
-cfg.CustomDataset = importlib.import_module(
-    cfg.dataset).CustomDataset  # Guarda la clase del Dataset personalizado CustomDataset(Dataset)
-cfg.tr_collate_fn = importlib.import_module(
-    cfg.dataset).tr_collate_fn  # train collate -> funcion que hace los batch o cjtos de X e y
-cfg.val_collate_fn = importlib.import_module(
-    cfg.dataset).val_collate_fn  # validation collate lo mismo \ En todos los modulos data ambas = None
-batch_to_device = importlib.import_module(
-    cfg.dataset).batch_to_device  # Guarda la funcion batch_to_device(batch, device)
-
-
+cfg.CustomDataset = importlib.import_module(cfg.dataset).CustomDataset  # Guarda la clase del Dataset personalizado CustomDataset(Dataset)
+cfg.tr_collate_fn = importlib.import_module(cfg.dataset).tr_collate_fn  # train collate -> funcion que hace los batch o cjtos de X e y
+cfg.val_collate_fn = importlib.import_module(cfg.dataset).val_collate_fn  # validation collate lo mismo \ En todos los modulos data ambas = None
+batch_to_device = importlib.import_module(cfg.dataset).batch_to_device  # Guarda la funcion batch_to_device(batch, device)
 # device -> La GPU de cfg.     La func hace : "batch_dict = {key: batch[key].to(device) for key in batch}"
 # Básicamente usa .to() que es para pasarselo a la GPU
 
@@ -232,7 +210,9 @@ if __name__ == "__main__":
         cfg.seed = np.random.randint(1_000_000)
     print("seed", cfg.seed)
 
-    device = "cuda:%d" % cfg.gpu
+    # Sustituyo el original por cpu
+    # device = "cuda:%d" % cfg.gpu
+    device = "cpu"
     cfg.device = device
 
     set_seed(cfg.seed)  # Llama a la funcion creada que establece varias seed para la generacion aleatoria
